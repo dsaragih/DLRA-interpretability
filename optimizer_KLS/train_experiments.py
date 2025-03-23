@@ -196,8 +196,9 @@ def train_and_finetune(NN,epochs,criterion,optimizer,scheduler,train_loader,vali
 
 def train_baseline(NN,epochs,criterion,optimizer,scheduler,train_loader,validation_loader,path,device = 'cpu',net_name = 'vgg',save_weights = False):
 
-    top1_metric = Accuracy().to(device)
-    top5_metric = Accuracy(top_k = 5).to(device)
+    num_classes = NN.linear.out_features
+    top1_metric = Accuracy(task="multiclass", num_classes=num_classes).to(device)
+    top5_metric = Accuracy(task="multiclass", num_classes=num_classes, top_k = 5).to(device)
 
     running_data = pd.DataFrame(data=None, columns=['epoch', 'theta', 'learning_rate', 'train_loss', 'train_accuracy(%)',
                                                     'top_5_accuracy(%)', \
@@ -212,7 +213,7 @@ def train_baseline(NN,epochs,criterion,optimizer,scheduler,train_loader,validati
     file_name = path
 
 
-    for epoch in tqdm(range(epochs)):
+    for epoch in range(epochs):
 
         print(f'epoch {epoch}---------------------------------------------')
         loss_hist = 0
@@ -223,7 +224,7 @@ def train_baseline(NN,epochs,criterion,optimizer,scheduler,train_loader,validati
         NN.train()
         total = 0.0
         correct = 0.0
-        for i, data in enumerate(train_loader):  # train
+        for i, data in tqdm(enumerate(train_loader), total=k, desc=f"Training Epoch {epoch}"):
             NN.zero_grad()
             optimizer.zero_grad()
             inputs, labels = data
