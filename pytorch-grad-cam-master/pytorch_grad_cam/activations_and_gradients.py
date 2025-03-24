@@ -50,3 +50,4 @@ class ActivationsAndGradients:
     def release(self):
         for handle in self.handles:
             handle.remove()
+

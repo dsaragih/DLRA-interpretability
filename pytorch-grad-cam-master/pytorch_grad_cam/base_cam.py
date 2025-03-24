@@ -3,7 +3,7 @@ from typing import Callable, List, Optional, Tuple
 import numpy as np
 import torch
 import ttach as tta
-
+import time
 from pytorch_grad_cam.activations_and_gradients import ActivationsAndGradients
 from pytorch_grad_cam.utils.image import scale_cam_image
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
@@ -20,6 +20,7 @@ class BaseCAM:
         uses_gradients: bool = True,
         tta_transforms: Optional[tta.Compose] = None,
         detach: bool = True,
+        low_rank: bool = False,
     ) -> None:
         self.model = model.eval()
         self.target_layers = target_layers
@@ -47,6 +48,10 @@ class BaseCAM:
             self.tta_transforms = tta_transforms
 
         self.detach = detach
+        self.low_rank = low_rank
+        if self.low_rank:
+            print("Using Low Rank CAM")
+            self.model.update_step(new_step = 'K')
         self.activations_and_grads = ActivationsAndGradients(self.model, target_layers, reshape_transform, self.detach)
 
     """ Get a vector of weights for every channel in the target layer.
@@ -98,13 +103,21 @@ class BaseCAM:
         if self.compute_input_gradient:
             input_tensor = torch.autograd.Variable(input_tensor, requires_grad=True)
 
+
         self.outputs = outputs = self.activations_and_grads(input_tensor)
 
+        print(f"Outputs: {outputs.cpu().data.numpy()}")
         if targets is None:
             target_categories = np.argmax(outputs.cpu().data.numpy(), axis=-1)
+            print(f"target_categories: {target_categories}")
             targets = [ClassifierOutputTarget(category) for category in target_categories]
+        else:
+            # Output at the target(s)
+            logits = [target(output).cpu().data.numpy() for target, output in zip(targets, outputs)]
+            print(f"Target logit: {logits}")
 
         if self.uses_gradients:
+            start_time = time.time()
             self.model.zero_grad()
             loss = sum([target(output) for target, output in zip(targets, outputs)])
             if self.detach:
@@ -116,6 +129,7 @@ class BaseCAM:
                 # loss.backward(retain_graph=True, create_graph=True)
             if 'hpu' in str(self.device):
                 self.__htcore.mark_step()
+            print(f"Time to compute gradients: {time.time() - start_time}")
 
         # In most of the saliency attribution papers, the saliency is
         # computed with a single target layer.

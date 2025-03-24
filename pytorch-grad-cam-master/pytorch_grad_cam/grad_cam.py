@@ -5,13 +5,14 @@ from pytorch_grad_cam.base_cam import BaseCAM
 
 class GradCAM(BaseCAM):
     def __init__(self, model, target_layers,
-                 reshape_transform=None):
+                 reshape_transform=None, low_rank=False):
         super(
             GradCAM,
             self).__init__(
             model,
             target_layers,
-            reshape_transform)
+            reshape_transform,
+            low_rank=low_rank)
 
     def get_cam_weights(self,
                         input_tensor,

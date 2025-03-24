@@ -13,9 +13,11 @@ from pytorch_grad_cam import GuidedBackpropReLUModel
 from pytorch_grad_cam.utils.image import (
     show_cam_on_image, deprocess_image, preprocess_image
 )
+from models.resnet20_baseline import ResNet20 as ResNet20_baseline
+from models.resnet20 import ResNet20
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget, ClassifierOutputReST
 
-
+model_path = "/home/daniel/DLRT-Net-main/cifar10/results/resnet20"
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cpu',
@@ -43,6 +45,8 @@ def get_args():
 
     parser.add_argument('--output-dir', type=str, default='output',
                         help='Output directory to save the images')
+    parser.add_argument('--low-rank', action='store_true',
+                        help='Use low rank approximation for the CAM computation')
     args = parser.parse_args()
     
     if args.device:
@@ -82,7 +86,20 @@ if __name__ == '__main__':
     if args.device=='hpu':
         import habana_frameworks.torch.core as htcore
 
-    model = models.resnet50(pretrained=True).to(torch.device(args.device)).eval()
+    # model = models.resnet50(pretrained=True).to(torch.device(args.device)).eval()
+    # Load model from `DLRT-Net-main/cifar10/results/resnet20/resnet20_cifar10_baseline_0.0__best_weights.pt`
+    
+    if args.low_rank:
+        state_dict = torch.load(os.path.join(model_path, "resnet20_cifar10_0.08_best_weights.pt"))
+        model = ResNet20(device=torch.device(args.device))
+        # Append _lr to output_dir
+        args.output_dir += '_lr'
+    else:
+        state_dict = torch.load(os.path.join(model_path, "resnet20_cifar10_baseline_0.0__best_weights.pt"))
+        model = ResNet20_baseline()
+
+    model.load_state_dict(state_dict)
+    model = model.to(torch.device(args.device)).eval()
 
     # Choose the target layer you want to compute the visualization for.
     # Usually this will be the last convolutional layer in the model.
@@ -97,10 +114,17 @@ if __name__ == '__main__':
     # from pytorch_grad_cam.utils.find_layers import find_layer_types_recursive
     # find_layer_types_recursive(model, [torch.nn.ReLU])
     
-    target_layers = [model.layer4]
+    target_layers = [model.layer3]
 
     rgb_img = cv2.imread(args.image_path, 1)[:, :, ::-1]
     rgb_img = np.float32(rgb_img) / 255
+
+    # Crop the center
+    h, w = rgb_img.shape[0], rgb_img.shape[1]
+    min_dim = min(h, w)
+    start_h, start_w = (h - min_dim) // 2, (w - min_dim) // 2
+    rgb_img = rgb_img[start_h:start_h + min_dim, start_w:start_w + min_dim]
+
     input_tensor = preprocess_image(rgb_img,
                                     mean=[0.485, 0.456, 0.406],
                                     std=[0.229, 0.224, 0.225]).to(args.device)
@@ -109,15 +133,16 @@ if __name__ == '__main__':
     # the Class Activation Maps for.
     # If targets is None, the highest scoring category (for every member in the batch) will be used.
     # You can target specific categories by
-    # targets = [ClassifierOutputTarget(281)]
+    targets = [ClassifierOutputTarget(3)]
     # targets = [ClassifierOutputReST(281)]
-    targets = None
+    # targets = None
 
     # Using the with statement ensures the context is freed, and you can
     # recreate different CAM objects in a loop.
     cam_algorithm = methods[args.method]
     with cam_algorithm(model=model,
-                       target_layers=target_layers) as cam:
+                       target_layers=target_layers,
+                       low_rank=args.low_rank) as cam:
 
         # AblationCAM and ScoreCAM have batched implementations.
         # You can override the internal batch size for faster computation.
@@ -141,10 +166,11 @@ if __name__ == '__main__':
     gb = deprocess_image(gb)
 
     os.makedirs(args.output_dir, exist_ok=True)
+    image_name = os.path.basename(args.image_path).split('.')[0]
 
-    cam_output_path = os.path.join(args.output_dir, f'{args.method}_cam.jpg')
-    gb_output_path = os.path.join(args.output_dir, f'{args.method}_gb.jpg')
-    cam_gb_output_path = os.path.join(args.output_dir, f'{args.method}_cam_gb.jpg')
+    cam_output_path = os.path.join(args.output_dir, f'{args.method}_{image_name}_cam.jpg')
+    gb_output_path = os.path.join(args.output_dir, f'{args.method}_{image_name}_gb.jpg')
+    cam_gb_output_path = os.path.join(args.output_dir, f'{args.method}_{image_name}_cam_gb.jpg')
 
     cv2.imwrite(cam_output_path, cam_image)
     cv2.imwrite(gb_output_path, gb)
