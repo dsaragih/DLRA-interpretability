@@ -80,7 +80,7 @@ class GuidedBackpropReLUModel:
         input_img = input_img.requires_grad_(True)
 
         output = self.forward(input_img)
-
+        print(f"output shape: {output.shape}")
         if target_category is None:
             target_category = np.argmax(output.cpu().data.numpy())
 

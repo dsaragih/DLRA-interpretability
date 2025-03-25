@@ -106,7 +106,7 @@ class BaseCAM:
 
         self.outputs = outputs = self.activations_and_grads(input_tensor)
 
-        print(f"Outputs: {outputs.cpu().data.numpy()}")
+        # print(f"Outputs: {outputs.cpu().data.numpy()}")
         if targets is None:
             target_categories = np.argmax(outputs.cpu().data.numpy(), axis=-1)
             print(f"target_categories: {target_categories}")
@@ -114,8 +114,8 @@ class BaseCAM:
         else:
             # Output at the target(s)
             logits = [target(output).cpu().data.numpy() for target, output in zip(targets, outputs)]
-            print(f"Target logit: {logits}")
-
+            # print(f"Target logit: {logits}")
+        
         if self.uses_gradients:
             start_time = time.time()
             self.model.zero_grad()
@@ -129,7 +129,11 @@ class BaseCAM:
                 # loss.backward(retain_graph=True, create_graph=True)
             if 'hpu' in str(self.device):
                 self.__htcore.mark_step()
-            print(f"Time to compute gradients: {time.time() - start_time}")
+            # If getattr time_list append
+            if hasattr(self, 'time_list'):
+                self.time_list.append(time.time() - start_time)
+            else:
+                print(f"Time for first backward: {time.time() - start_time}")
 
         # In most of the saliency attribution papers, the saliency is
         # computed with a single target layer.
