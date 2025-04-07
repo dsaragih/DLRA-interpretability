@@ -2,9 +2,12 @@
 # Pytorch implementation of "Dynamical Low-rank approximations and its application to neural interpretability"
 
 ![GradCAM example](./pytorch-grad-cam/examples/gradcam-res.png)
+
+See the associated paper [here](https://drive.google.com/file/d/19MG0A-SxHVtb9BjCT0jwiShHdtPE4cU8/view?usp=drive_link) for more details.
+
 ## Installation
 
-1. create a python virtual environment (pyenv or conda) and install pip using  ``conda install pip``. If you are using no virtual environment, please be aware of
+1. Create a python virtual environment (pyenv or conda) and install pip using  ``conda install pip``. If you are using no virtual environment, please be aware of
    version incompatibilities of tensorflow.
 2. Install the project requirements (example for pip):
    ``pip install -r requirements.txt``.
@@ -13,6 +16,7 @@
 1. In this repository there are different datasets folders, inside each one of them there are the Python scripts to train on some neural networks. The files are named as ``netname_datasetname.py`` (for DLRT) and ``netname_datasetname_baseline.py`` for the full rank standard Pytorch baseline. Each script contains its parsers to modify the training parameters (the help for the parsers is available). Results are saved in the relative folder inside the current one.
 2. All the other folders (e.g. accuracy_vs_cr,UV_vanilla,Lenet_experiment,timings) contain the experiment presented in the thesis to be run. 
 3. Each folder contains a produce_results file, that is producing the table or the plots presented in the paper.
+4. The paper only used the ResNet20 in `/cifar10/` with thresholds [0.04, 0.08, 0.12, 0.16]. Other settings are kept the same.
 
 
 ## Usage: GradCAM
@@ -23,9 +27,22 @@
 ## Usage: Dynamical PCA
 1. The code to setup the pendulum environment and run the dynamical PCA is entirely contained in `pca_experiments.ipynb`.
 2. Simply run the notebook and follow the instructions. Figures will be saved in the `figures` folder, and some gifs will be saved in the current folder.
+
 ![Pendulum plots](./pytorch-grad-cam/examples/pendulum.png)
 
 ### Citations
+
+If you use this code in your research, please cite:
+
+```
+@misc{saragih2025dynamicallowrank,
+  title={Dynamical Low-rank approximations and its application to neural interpretability},
+  author={Saragih, Daniel},
+  year={2025},
+  publisher={GitHub},
+  howpublished={\url{https://github.com/dsaragih/DLRA-interpretability}},
+}
+```
 
 This repository is largely based on two papers:
 
