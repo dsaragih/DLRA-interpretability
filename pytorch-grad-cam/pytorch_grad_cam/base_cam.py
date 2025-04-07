@@ -99,12 +99,13 @@ class BaseCAM:
         self, input_tensor: torch.Tensor, targets: List[torch.nn.Module], eigen_smooth: bool = False
     ) -> np.ndarray:
         input_tensor = input_tensor.to(self.device)
-
+        total_time = 0.
         if self.compute_input_gradient:
             input_tensor = torch.autograd.Variable(input_tensor, requires_grad=True)
 
-
+        start_time = time.time()
         self.outputs = outputs = self.activations_and_grads(input_tensor)
+        total_time += time.time() - start_time
 
         # print(f"Outputs: {outputs.cpu().data.numpy()}")
         if targets is None:
@@ -117,9 +118,9 @@ class BaseCAM:
             # print(f"Target logit: {logits}")
         
         if self.uses_gradients:
-            start_time = time.time()
             self.model.zero_grad()
             loss = sum([target(output) for target, output in zip(targets, outputs)])
+            start_time = time.time()
             if self.detach:
                 loss.backward(retain_graph=True)
             else:
@@ -127,11 +128,12 @@ class BaseCAM:
                 torch.autograd.grad(loss, input_tensor, retain_graph = True, create_graph = True)
                 # When using the following loss.backward() method, a warning is raised: "UserWarning: Using backward() with create_graph=True will create a reference cycle"
                 # loss.backward(retain_graph=True, create_graph=True)
+            total_time += time.time() - start_time
             if 'hpu' in str(self.device):
                 self.__htcore.mark_step()
             # If getattr time_list append
             if hasattr(self, 'time_list'):
-                self.time_list.append(time.time() - start_time)
+                self.time_list.append(total_time)
             else:
                 print(f"Time for first backward: {time.time() - start_time}")
 

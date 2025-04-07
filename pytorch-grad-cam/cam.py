@@ -16,6 +16,7 @@ from pytorch_grad_cam.utils.image import (
 from models.resnet20_baseline import ResNet20 as ResNet20_baseline
 from models.resnet20 import ResNet20
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget, ClassifierOutputReST
+import time
 
 model_path = "/home/daniel/DLRT-Net-main/cifar10/results/resnet20"
 def get_args():
@@ -126,6 +127,7 @@ if __name__ == '__main__':
         image_paths = [os.path.join(args.image_path, img) for img in os.listdir(args.image_path) if img.endswith(('.png', '.jpg', '.jpeg'))]
         rgb_imgs = []
         for img_path in image_paths:
+            print(f'Processing image: {os.path.basename(img_path)}')
             rgb_img = cv2.imread(img_path, 1)[:, :, ::-1]
             rgb_img = np.float32(rgb_img) / 255
             # Resize while maintaining aspect ratio
@@ -168,10 +170,17 @@ if __name__ == '__main__':
     # the Class Activation Maps for.
     # If targets is None, the highest scoring category (for every member in the batch) will be used.
     # You can target specific categories by
-    targets = [ClassifierOutputTarget(3)]
+    # targets = [ClassifierOutputTarget(3)]
     # targets = [ClassifierOutputReST(281)]
-    # targets = None
-
+    targets = None
+    # Targets: Airplane(0), Cat&Dog(3, 5), Dog(5), Automobile(1), Cat(3)
+    # targets = [
+    #     [ClassifierOutputTarget(0)],
+    #     [ClassifierOutputTarget(3), ClassifierOutputTarget(5)],
+    #     [ClassifierOutputTarget(5)],
+    #     [ClassifierOutputTarget(1)],
+    #     [ClassifierOutputTarget(3)]
+    # ]
     # Using the with statement ensures the context is freed, and you can
     # recreate different CAM objects in a loop.
     cam_algorithm = methods[args.method]
@@ -188,14 +197,17 @@ if __name__ == '__main__':
         # grayscale_cam = grayscale_cam[0, :]
         cam_images = []
         for i in range(input_tensor.shape[0]):
+            # start = time.time()
             grayscale_cam = cam(input_tensor=input_tensor[i:i+1],
-                            targets=targets,
+                            targets=targets[i] if targets is not None else None,
                             aug_smooth=args.aug_smooth,
                             eigen_smooth=args.eigen_smooth)
             
             cam_image = show_cam_on_image(rgb_imgs[i], grayscale_cam[0, :], use_rgb=True)
             cam_image = cv2.cvtColor(cam_image, cv2.COLOR_RGB2BGR)
             cam_images.append(cam_image)
+            # end = time.time()
+            # times.append(end - start)
         # Stack cam images on new first axis
         cam_images = np.stack(cam_images, axis=0)
 
@@ -221,12 +233,12 @@ if __name__ == '__main__':
         for i, cam_img in enumerate(cam_images):
             iname = os.path.basename(image_paths[i]).split('.')[0]
             cv2.imwrite(os.path.join(args.output_dir, f'{args.method}_{iname}_cam.jpg'), cam_img)
-        np.save(times_path, times)
+        # np.save(times_path, times)
     else:
         image_name = os.path.basename(args.image_path).split('.')[0]
         cam_output_path = os.path.join(args.output_dir, f'{args.method}_{image_name}_cam.jpg')
         cv2.imwrite(cam_output_path, cam_images[0])
-        np.save(times_path, times)
+        # np.save(times_path, times)
     
         
 

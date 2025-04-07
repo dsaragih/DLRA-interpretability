@@ -1,7 +1,12 @@
--f https://download.pytorch.org/whl/cu113/torch_stable.html
-torch>=1.10.0+cu113 
 torchvision
 torchmetrics
 tqdm
 pandas
 scipy
+numpy
+Pillow
+torch>=1.7.1
+ttach
+opencv-python
+matplotlib
+scikit-learn
